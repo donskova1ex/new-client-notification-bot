@@ -10,7 +10,7 @@ import (
 
 type BotConfig struct {
 	BotToken string
-	ChatID   string
+	ChatID   int64
 }
 
 type LogConfig struct {
@@ -47,7 +47,7 @@ func getString(key, defaultString string) string {
 func NewBotConfig() *BotConfig {
 	return &BotConfig{
 		BotToken: getString("BOT_TOKEN", ""),
-		ChatID:   getString("CHAT_ID", ""),
+		ChatID:   int64(getInt("CHAT_ID", 0)),
 	}
 }
 
