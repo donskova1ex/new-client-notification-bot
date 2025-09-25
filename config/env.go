@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strconv"
@@ -44,11 +45,20 @@ func getString(key, defaultString string) string {
 	return val
 }
 
-func NewBotConfig() *BotConfig {
-	return &BotConfig{
-		BotToken: getString("BOT_TOKEN", ""),
-		ChatID:   int64(getInt("CHAT_ID", 0)),
+func NewBotConfig() (*BotConfig, error) {
+	botToken := getString("BOT_TOKEN", "")
+	if botToken == "" {
+		return nil, errors.New("bot token required")
 	}
+	chatID := getInt("CHAT_ID", 0)
+	if chatID == 0 {
+		return nil, errors.New("bot chat id required")
+	}
+
+	return &BotConfig{
+		BotToken: botToken,
+		ChatID:   int64(chatID),
+	}, nil
 }
 
 func NewLogConfig() *LogConfig {

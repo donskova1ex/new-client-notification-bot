@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"new-client-notification-bot/internal/domain"
 	"new-client-notification-bot/internal/services"
+	"regexp"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog"
@@ -11,11 +14,11 @@ import (
 
 type Notification struct {
 	router             fiber.Router
-	telegramBotService *services.TelegramBotService
+	telegramBotService services.TelegramBotServiceInterface
 	logger             *zerolog.Logger
 }
 
-func NewNotificationHandler(router fiber.Router, telegramBotService *services.TelegramBotService, logger *zerolog.Logger) {
+func NewNotificationHandler(router fiber.Router, telegramBotService services.TelegramBotServiceInterface, logger *zerolog.Logger) {
 	handler := &Notification{
 		router:             router,
 		telegramBotService: telegramBotService,
@@ -49,7 +52,7 @@ func (n *Notification) CreateNotification(c *fiber.Ctx) error {
 
 	if err := n.telegramBotService.SendMessage(c.Context(), message); err != nil {
 		n.logger.Error().Err(err).Msg("failed to send message")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
 			"message": "failed to send message",
 		})
@@ -75,11 +78,22 @@ func (n *Notification) validateRequest(req *domain.Notification) error {
 		return err
 	}
 
+	if len(req.NotificationText) > 255 {
+		return errors.New("notification_text too long")
+	}
+	if !phoneValidation(req.Phone) {
+		return errors.New("invalid phone")
+	}
+
 	return nil
 }
 
 func emptyStringValidator(s, stringName string) error {
-	if s == "" {
+	if s == "" || len(s) == 0 {
+		return fmt.Errorf("%s is required", stringName)
+	}
+	trimmed := strings.TrimSpace(s)
+	if trimmed == "" {
 		return fmt.Errorf("%s is required", stringName)
 	}
 	return nil
@@ -88,9 +102,18 @@ func emptyStringValidator(s, stringName string) error {
 func (n *Notification) createFormatNotification(req *domain.Notification) string {
 	formatMessage := fmt.Sprintf(
 		"Клиент: %s;\nТелефон: %s;\nТекст обращение: %s",
-		req.Phone,
 		req.CompanyName,
+		req.Phone,
 		req.NotificationText,
 	)
 	return formatMessage
+}
+
+func phoneValidation(phone string) bool {
+	cleanedPhone := regexp.MustCompile(`\D`).ReplaceAllString(phone, "")
+
+	pattern := `^(?:\+7|8|7)\s?9\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$`
+	re := regexp.MustCompile(pattern)
+
+	return re.MatchString(cleanedPhone)
 }

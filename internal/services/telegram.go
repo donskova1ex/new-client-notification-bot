@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"net/http"
 	"new-client-notification-bot/config"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/rs/zerolog"
@@ -20,7 +22,9 @@ func NewTelegramBotService(cfg *config.BotConfig, logger *zerolog.Logger) (*Tele
 		logger.Error().Err(err).Msg("failed to create telegram bot")
 		return nil, err
 	}
-
+	bot.Client = &http.Client{
+		Timeout: 30 * time.Second,
+	}
 	logger.Info().Str("bot_name", bot.Self.UserName).Msg("telegram bot created")
 
 	return &TelegramBotService{
